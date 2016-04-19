@@ -6,6 +6,7 @@ import numpy as np
 from pydub import AudioSegment, playback
 
 SECOND = 1000
+DEBUG = True
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
@@ -84,12 +85,13 @@ class Composer:
     def evolve(self, population, target, retain=0.2, random_select=0.05, mutate=10):
         # find the skews of each member in the population
         graded = np.array([self.fitness(self.get_skew(individual), target) for individual in population])
-        # logging.debug("population grading {}".format(graded))
+        if DEBUG: logging.debug("population grading {}".format(graded))
         # choose best performing
         max_ind = np.where(graded == graded.max())
         min_ind = np.where(graded == graded.min())
-        # logging.debug("index of max is {}".format(max_ind))
-        # logging.debug("index of min is {}".format(min_ind))
+        if DEBUG:
+            logging.debug("index of max is {}".format(max_ind))
+            logging.debug("index of min is {}".format(min_ind))
         parent1 = population[max_ind]
         parent2 = population[min_ind]
 
@@ -118,10 +120,11 @@ if __name__ == '__main__':
             playback.play(p)
     # play final, correct version
 
-    # logging.debug("target = {}".format(target))
-    # logging.debug(comp.grade(population, target))
-    # for i in range(len(fitnesses)):
-        # logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
+    if DEBUG:
+        logging.debug("target = {}".format(target))
+        logging.debug(comp.grade(population, target))
+        for i in range(len(fitnesses)):
+            logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
 
     parent = comp.evolve(population, target)
     skew = comp.grade(parent, target)
@@ -131,5 +134,5 @@ if __name__ == '__main__':
                 playback.play(s)
         parent = comp.evolve(population, target)
         skew = comp.grade(parent, target)
-        logging.debug(np.abs(target - skew))
+        if DEBUG: logging.debug(np.abs(target - skew))
     playback.play(segment[2000:25500].fade_out(500))
