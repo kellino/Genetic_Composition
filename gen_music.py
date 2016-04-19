@@ -6,7 +6,7 @@ import numpy as np
 from pydub import AudioSegment, playback
 
 SECOND = 1000
-logger = logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
 class WhiteNoiseGen:
@@ -69,7 +69,7 @@ class Composer:
         return np.array([self.individual(words) for x in xrange(count)])
 
     def get_skew(self, individual):
-        return stats.skew(np.array([x.duration_SECONDs for x in individual]))
+        return stats.skew(np.array([x.duration_seconds for x in individual]))
 
     def fitness(self, skew, target):
         """ Measures the fitness of an individual against the 'perfect' target,
@@ -81,24 +81,55 @@ class Composer:
         skew = self.get_skew(summation)
         return self.fitness(skew, target)
 
+    def evolve(self, population, target, retain=0.2, random_select=0.05, mutate=10):
+        # find the skews of each member in the population
+        graded = np.array([self.fitness(self.get_skew(individual), target) for individual in population])
+        # logging.debug("population grading {}".format(graded))
+        # choose best performing
+        max_ind = np.where(graded == graded.max())
+        min_ind = np.where(graded == graded.min())
+        # logging.debug("index of max is {}".format(max_ind))
+        # logging.debug("index of min is {}".format(min_ind))
+        parent1 = population[max_ind]
+        parent2 = population[min_ind]
+
+        if mutate > random.randint(0, 100):
+            parent1 = parent1[:3] + parent1[:-1]
+
+        return parent1 + parent2
+
+
 if __name__ == '__main__':
     wg = WhiteNoiseGen()
     smp = Sampler()
     comp = Composer()
     segment = smp.get_sample('./I will give my love an apple.ogg')
     words = smp.split_sample(segment)
-    target = stats.skew(np.array([x.duration_SECONDs for x in words]))
+    target = stats.skew(np.array([x.duration_seconds for x in words]))
     playback.play(segment[2000:10000])
-    population = comp.population(3)
+    # create an initial population. In this case, _ grandparents
+    population = comp.population(4)
+    # used for debugging purposes
     fitnesses = []
     for individual in population:
         skew = comp.get_skew(individual)
         fitnesses.append(comp.fitness(skew, target))
         for p in individual:
             playback.play(p)
-    playback.play(segment[2000:25500].fade_out(500))
+    # play final, correct version
 
-    logger.DEBUG("target = {}".format(target))
-    logger.DEBUG(comp.grade(population, target))
-    for i in range(len(fitnesses)):
-        logger.DEBUG("individual {} has fitness {}".format(i+1, fitnesses[i]))
+    # logging.debug("target = {}".format(target))
+    # logging.debug(comp.grade(population, target))
+    # for i in range(len(fitnesses)):
+        # logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
+
+    parent = comp.evolve(population, target)
+    skew = comp.grade(parent, target)
+    while np.abs(target - skew) > 0.05:
+        for sperm in parent:
+            for s in sperm:
+                playback.play(s)
+        parent = comp.evolve(population, target)
+        skew = comp.grade(parent, target)
+        logging.debug(np.abs(target - skew))
+    playback.play(segment[2000:25500].fade_out(500))
