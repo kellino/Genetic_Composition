@@ -1,10 +1,12 @@
+import logging
 import random
 import scikits.audiolab as alb
 from scipy import stats
 import numpy as np
 from pydub import AudioSegment, playback
 
-second = 1000
+SECOND = 1000
+logger = logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
 class WhiteNoiseGen:
@@ -22,8 +24,7 @@ class Sampler:
         return segment
 
     def split_sample(self, segment):
-        # hard coded subdivision of sample. It would be nice to do this
-        # programmatically
+        # hard coded subdivision of sample. It would be nice to do this programmatically
         words = []
         pause = segment[0:800]
         words.append(pause)
@@ -44,7 +45,7 @@ class Sampler:
 
 class Composer:
     def individual(self, words):
-        'Create an individual "member" of the population'
+        """ Create an individual 'member' of the population """
         rands = [random.randrange(1, 6, 1) for _ in range(3)]
         sorted(rands)
         individual = []
@@ -64,11 +65,21 @@ class Composer:
         return individual
 
     def population(self, count):
-        'Create a number of individuals, ie a population'
+        """ Create a number of individuals, ie a population """
         return np.array([self.individual(words) for x in xrange(count)])
 
-    def get_skew(self, population):
-        return stats.skew(np.array([x.duration_seconds for x in population]))
+    def get_skew(self, individual):
+        return stats.skew(np.array([x.duration_SECONDs for x in individual]))
+
+    def fitness(self, skew, target):
+        """ Measures the fitness of an individual against the 'perfect' target,
+            which is the skew of the original sample """
+        return np.abs(target - skew)
+
+    def grade(self, population, target):
+        summation = np.sum([[x for x in ind] for ind in population], axis=0)
+        skew = self.get_skew(summation)
+        return self.fitness(skew, target)
 
 if __name__ == '__main__':
     wg = WhiteNoiseGen()
@@ -76,14 +87,18 @@ if __name__ == '__main__':
     comp = Composer()
     segment = smp.get_sample('./I will give my love an apple.ogg')
     words = smp.split_sample(segment)
-    skews = []
-    skews.append(stats.skew(np.array([x.duration_seconds for x in words])))
+    target = stats.skew(np.array([x.duration_SECONDs for x in words]))
     playback.play(segment[2000:10000])
     population = comp.population(3)
-    for pop in population:
-        skews.append(comp.get_skew(pop))
-        for p in pop:
+    fitnesses = []
+    for individual in population:
+        skew = comp.get_skew(individual)
+        fitnesses.append(comp.fitness(skew, target))
+        for p in individual:
             playback.play(p)
     playback.play(segment[2000:25500].fade_out(500))
 
-    print skews
+    logger.DEBUG("target = {}".format(target))
+    logger.DEBUG(comp.grade(population, target))
+    for i in range(len(fitnesses)):
+        logger.DEBUG("individual {} has fitness {}".format(i+1, fitnesses[i]))
