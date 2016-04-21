@@ -145,7 +145,7 @@ class Composer:
                 logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
         parent = self.evolve(population, target)
         skew = self.grade(parent, target)
-        while np.abs(target - skew) > 0.04:
+        while np.abs(target - skew) > 0.4:
             for sperm in parent:
                 for s in sperm:
                     self.composition.append(s)
