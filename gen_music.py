@@ -1,6 +1,5 @@
 import logging
 import random
-from scipy import stats
 import numpy as np
 from pydub import AudioSegment, playback
 
@@ -33,6 +32,7 @@ class Composer:
     def __init__(self):
         self.sampler = Sampler()
         self.composition = []
+        # self.composition = AudioSegment.empty()
         # simple probability matrix based on pitch occurrences in the source
         # material, however the manner in which it is applied to the words
         # themselves is essentially arbitrary
@@ -56,19 +56,18 @@ class Composer:
                 individual.append(words_list[j].fade_in(400).fade_out(100))
             else:
                 individual.append(words_list[j])
-        logging.debug("individual {}".format(individual))
         return individual
 
     def population(self, words, count):
         """ Create a number of individuals, ie a population """
-        return np.array([self.individual(words) for x in xrange(count)])
+        return [self.individual(words) for x in xrange(count)]
 
     def get_skew(self, individual):
-        return stats.skew(np.array([x.duration_seconds for x in individual]))
+        return np.abs(reduce((lambda x, y: x-y), [len(x) for x in individual]))
 
     def grade(self, population, target):
-        summation = np.sum([[x for x in ind] for ind in population], axis=0)
-        skew = self.get_skew(summation)
+        mean = np.mean([[x for x in ind] for ind in population], axis=0)
+        skew = self.get_skew(mean)
         return self.fitness(skew, target)
 
     def fitness(self, skew, target):
@@ -86,7 +85,7 @@ class Composer:
         if DEBUG:
             logging.debug("index of max is {}".format(max_ind))
             logging.debug("index of min is {}".format(min_ind))
-        parent = population[max_ind]
+        parent = population[max_ind[0][0]]
 
         if mutate > random.randint(0, 100):
             parent = parent[:3] + parent[:-1]
@@ -108,7 +107,7 @@ class Composer:
                     seed = j
                     if j % 3 == 0:
                         self.composition.append(words[7])
-                    break;
+                    break
                 else:
                     # because the melody is quite static, it is necessary to
                     # break a strict markovian process every now and again
@@ -123,35 +122,36 @@ class Composer:
         """ the main composition function of the piece, cueing the different elements and appending
         them to a list of musical elements, which is returned to the play function """
         segment = self.sampler.get_ogg_sample('./I will give my love an apple.ogg')
-        self.composition.append(segment[2000:22000])
+        # exposition
+        self.composition.append(segment[2000:25000])
         words = self.sampler.split_sample(segment)
         pause = words[7]
         self.composition.append(pause)
+        # false development
         self.intro(words)
+        # early recap
         self.composition.append(segment[2000:12000])
+        # make a default population
         population = self.population(words, 4)
-        fitnesses = []
-        target = np.abs(stats.skew(np.array([x.duration_seconds for k, x in words.iteritems()])))
+        target = self.get_skew([x for k, x in words.iteritems()])
+        logging.debug("target skew is {}".format(target))
+        # (d)evolution development
         for individual in population:
             skew = self.get_skew(individual)
-            fitnesses.append(self.fitness(skew, target))
+            logging.debug([len(x) for x in individual])
+            logging.debug("skew is {}".format(skew))
             for p in individual:
                 self.composition.append(p)
-        # play final, correct version
-        if DEBUG:
-            logging.debug("target = {}".format(target))
-            logging.debug(self.grade(population, target))
-            for i in range(len(fitnesses)):
-                logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
+
         parent = self.evolve(population, target)
-        skew = self.grade(parent, target)
-        while np.abs(target - skew) > 0.4:
+        while abs(target - skew) > 200:
             for sperm in parent:
                 for s in sperm:
                     self.composition.append(s)
-                parent = self.evolve(population , target)
-            skew = self.grade(parent, target)
-            if DEBUG: logging.debug(np.abs(target - skew))
+                    parent = self.evolve((parent + population[1:])[:8], target)
+            if DEBUG:
+                logging.debug("absolute different {}".format(np.abs(target - skew)))
+        # recap
         self.composition.append(segment[2000:25000].fade_in(500).fade_out(1000))
 
     def play(self):
