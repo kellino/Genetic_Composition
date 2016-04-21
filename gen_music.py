@@ -1,6 +1,5 @@
 import logging
 import random
-import scikits.audiolab as alb
 from scipy import stats
 import numpy as np
 from pydub import AudioSegment, playback
@@ -10,79 +9,74 @@ DEBUG = True
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
-class WhiteNoiseGen:
-    def individual(self, length):
-        return [np.random.uniform(-1, 1, length)]
-
-    def play_individual(self, individual, coeff):
-        scaled = np.int16(individual / np.max(np.abs(individual)) * coeff)
-        alb.play(scaled)
-
-
 class Sampler:
-    def get_sample(self, filepath):
+    def get_ogg_sample(self, filepath):
         segment = AudioSegment.from_ogg(filepath)
         return segment
 
     def split_sample(self, segment):
-        # hard coded subdivision of sample. It would be nice to do this programmatically
-        words = []
-        pause = segment[0:800]
-        words.append(pause)
-        i = segment[2000:2350]
-        words.append(i)
-        will = segment[2350:3000]
-        words.append(will)
-        give = segment[3000:4000]
-        words.append(give)
-        my = segment[4000:5000]
-        words.append(my)
-        love = segment[5000:5500]
-        words.append(love)
-        a = segment[5500:6000]
-        words.append(a)
+        # hard coded subdivision of sample. It would be nice to do
+        # this programmatically
+        words = {}
+        words[7] = segment[0:800]       # pause
+        words[0] = segment[2000:2350]   # I
+        words[1] = segment[2350:3000]   # will
+        words[2] = segment[3000:3900]   # give
+        words[3] = segment[4000:5000]   # my
+        words[4] = segment[5000:5500]   # love
+        words[5] = segment[5500:6100]   # an
+        words[6] = segment[6100:7200]   # apple
         return words
 
 
 class Composer:
+    def __init__(self):
+        self.sampler = Sampler()
+        self.composition = []
+        # simple probability matrix based on pitch occurrences in the source
+        # material, however the manner in which it is applied to the words
+        # themselves is essentially arbitrary
+        self.markov = {0 : [0.571 , 0.143 , 0    , 0   , 0.143 , 0   , 0.143] ,
+                       1 : [0.33  , 0     , 0.66 , 0   , 0     , 0   , 0]     ,
+                       2 : [0     , 0     , 0    , 1   , 0     , 0   , 0]     ,
+                       3 : [0     , 0     , 0.33 , 0   , 0.66  , 0   , 0]     ,
+                       4 : [0.5   , 0.3   , 0    , 0.2 , 0     , 0   , 0]     ,
+                       5 : [0     , 0     , 0.33 , 0   , 0.66  , 0   , 0]     ,
+                       6 : [0     , 0     , 0    , 0   , 0     , 0.5 , 0.5]}
+
     def individual(self, words):
         """ Create an individual 'member' of the population """
-        rands = [random.randrange(1, 6, 1) for _ in range(3)]
-        sorted(rands)
+        words_list = [x for y, x in words.iteritems()]
+        random.shuffle(words_list)
         individual = []
-        random.shuffle(words)
-        for j in range(len(words)):
-            if j % rands[0] == 0:
-                individual.append(words[j].reverse())
-            if j % rands[1] == 0:
-                individual.append(words[j].fade_in(400).fade_out(100))
-            if j+j % rands[2] == 0:
-                rand = random.randint(1000, 100000)
-                ind = wg.individual(rand)
-                coeff = random.randint(1000, 100000)
-                wg.play_individual(ind, coeff)
+        for j in range(len(words_list)):
+            if j % 2 == 0:
+                individual.append(words_list[j].reverse())
+            elif j % 3 == 0:
+                individual.append(words_list[j].fade_in(400).fade_out(100))
             else:
-                individual.append(words[j])
+                individual.append(words_list[j])
+        logging.debug("individual {}".format(individual))
         return individual
 
-    def population(self, count):
+    def population(self, words, count):
         """ Create a number of individuals, ie a population """
         return np.array([self.individual(words) for x in xrange(count)])
 
     def get_skew(self, individual):
         return stats.skew(np.array([x.duration_seconds for x in individual]))
 
-    def fitness(self, skew, target):
-        """ Measures the fitness of an individual against the 'perfect' target,
-            which is the skew of the original sample """
-        return np.abs(target - skew)
-
     def grade(self, population, target):
         summation = np.sum([[x for x in ind] for ind in population], axis=0)
         skew = self.get_skew(summation)
         return self.fitness(skew, target)
 
-    def evolve(self, population, target, retain=0.2, random_select=0.05, mutate=10):
+    def fitness(self, skew, target):
+            """ Measures the fitness of an individual against the 'perfect' target,
+                which is the skew of the original sample """
+            return np.abs(target - skew)
+
+    def evolve(self, population, target, retain=0.2, random_select=0.05, mutate=33):
         # find the skews of each member in the population
         graded = np.array([self.fitness(self.get_skew(individual), target) for individual in population])
         if DEBUG: logging.debug("population grading {}".format(graded))
@@ -92,47 +86,80 @@ class Composer:
         if DEBUG:
             logging.debug("index of max is {}".format(max_ind))
             logging.debug("index of min is {}".format(min_ind))
-        parent1 = population[max_ind]
-        parent2 = population[min_ind]
+        parent = population[max_ind]
 
         if mutate > random.randint(0, 100):
-            parent1 = parent1[:3] + parent1[:-1]
+            parent = parent[:3] + parent[:-1]
 
-        return parent1 + parent2
+        return parent
+
+    def intro(self, words):
+        rand = random.randrange(1, 3)
+        for i in range(rand):
+            for k, word in words.iteritems():
+                self.composition.append(word)
+        seed = 3
+        self.composition.append(words[seed])
+        for i in range(49):
+            randFloat = random.uniform(0, 1)
+            for j in range(len(self.markov[seed])):
+                if randFloat < self.markov[seed][j]:
+                    self.composition.append(words[j])
+                    seed = j
+                    if j % 3 == 0:
+                        self.composition.append(words[7])
+                    break;
+                else:
+                    # because the melody is quite static, it is necessary to
+                    # break a strict markovian process every now and again
+                    rand = random.randrange(1, 3)
+                    seed = (seed + rand) % len(self.markov[seed])
+        rand = random.randrange(1, 2)
+        for i in range(rand):
+            for k, word in words.iteritems():
+                self.composition.append(word)
+
+    def compose(self):
+        """ the main composition function of the piece, cueing the different elements and appending
+        them to a list of musical elements, which is returned to the play function """
+        segment = self.sampler.get_ogg_sample('./I will give my love an apple.ogg')
+        self.composition.append(segment[2000:22000])
+        words = self.sampler.split_sample(segment)
+        pause = words[7]
+        self.composition.append(pause)
+        self.intro(words)
+        self.composition.append(segment[2000:12000])
+        population = self.population(words, 4)
+        fitnesses = []
+        target = np.abs(stats.skew(np.array([x.duration_seconds for k, x in words.iteritems()])))
+        for individual in population:
+            skew = self.get_skew(individual)
+            fitnesses.append(self.fitness(skew, target))
+            for p in individual:
+                self.composition.append(p)
+        # play final, correct version
+        if DEBUG:
+            logging.debug("target = {}".format(target))
+            logging.debug(self.grade(population, target))
+            for i in range(len(fitnesses)):
+                logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
+        parent = self.evolve(population, target)
+        skew = self.grade(parent, target)
+        while np.abs(target - skew) > 0.04:
+            for sperm in parent:
+                for s in sperm:
+                    self.composition.append(s)
+                parent = self.evolve(population , target)
+            skew = self.grade(parent, target)
+            if DEBUG: logging.debug(np.abs(target - skew))
+        self.composition.append(segment[2000:25000].fade_in(500).fade_out(1000))
+
+    def play(self):
+        for segment in self.composition:
+            playback.play(segment)
 
 
 if __name__ == '__main__':
-    wg = WhiteNoiseGen()
-    smp = Sampler()
-    comp = Composer()
-    segment = smp.get_sample('./I will give my love an apple.ogg')
-    words = smp.split_sample(segment)
-    target = stats.skew(np.array([x.duration_seconds for x in words]))
-    playback.play(segment[2000:10000])
-    # create an initial population. In this case, _ grandparents
-    population = comp.population(4)
-    # used for debugging purposes
-    fitnesses = []
-    for individual in population:
-        skew = comp.get_skew(individual)
-        fitnesses.append(comp.fitness(skew, target))
-        for p in individual:
-            playback.play(p)
-    # play final, correct version
-
-    if DEBUG:
-        logging.debug("target = {}".format(target))
-        logging.debug(comp.grade(population, target))
-        for i in range(len(fitnesses)):
-            logging.debug("individual {} has fitness {}".format(i+1, fitnesses[i]))
-
-    parent = comp.evolve(population, target)
-    skew = comp.grade(parent, target)
-    while np.abs(target - skew) > 0.05:
-        for sperm in parent:
-            for s in sperm:
-                playback.play(s)
-        parent = comp.evolve(population, target)
-        skew = comp.grade(parent, target)
-        if DEBUG: logging.debug(np.abs(target - skew))
-    playback.play(segment[2000:25500].fade_out(500))
+    music = Composer()
+    music.compose()
+    music.play()
