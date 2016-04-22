@@ -36,13 +36,13 @@ class Composer:
         # simple probability matrix based on pitch occurrences in the source
         # material, however the manner in which it is applied to the words
         # themselves is essentially arbitrary
-        self.markov = {0 : [0.571 , 0.143 , 0    , 0   , 0.143 , 0   , 0.143] ,
-                       1 : [0.33  , 0     , 0.66 , 0   , 0     , 0   , 0]     ,
-                       2 : [0     , 0     , 0    , 1   , 0     , 0   , 0]     ,
-                       3 : [0     , 0     , 0.33 , 0   , 0.66  , 0   , 0]     ,
-                       4 : [0.5   , 0.3   , 0    , 0.2 , 0     , 0   , 0]     ,
-                       5 : [0     , 0     , 0.33 , 0   , 0.66  , 0   , 0]     ,
-                       6 : [0     , 0     , 0    , 0   , 0     , 0.5 , 0.5]}
+        self.markov = {0 : [0.571, 0.143, 0   , 0  , 0.143, 0  , 0.143],
+                       1 : [0.33 , 0    , 0.66, 0  , 0    , 0  , 0]    ,
+                       2 : [0    , 0    , 0   , 1  , 0    , 0  , 0]    ,
+                       3 : [0    , 0    , 0.33, 0  , 0.66 , 0  , 0]    ,
+                       4 : [0.5  , 0.3  , 0   , 0.2, 0    , 0  , 0]    ,
+                       5 : [0    , 0    , 0.33, 0  , 0.66 , 0  , 0]    ,
+                       6 : [0    , 0    , 0   , 0  , 0    , 0.5, 0.5]}
 
     def individual(self, words):
         """ Create an individual 'member' of the population """
@@ -75,10 +75,14 @@ class Composer:
                 which is the skew of the original sample """
             return np.abs(target - skew)
 
-    def evolve(self, population, target, retain=0.2, random_select=0.05, mutate=33):
+    def evolve(self, population, target, retain=0.2,
+               random_select=0.05, mutate=33):
         # find the skews of each member in the population
-        graded = np.array([self.fitness(self.get_skew(individual), target) for individual in population])
-        if DEBUG: logging.debug("population grading {}".format(graded))
+        graded = np.array(
+            [self.fitness(self.get_skew(individual), target)
+             for individual in population])
+        if DEBUG:
+            logging.debug("population grading {}".format(graded))
         # choose best performing
         max_ind = np.where(graded == graded.max())
         min_ind = np.where(graded == graded.min())
@@ -87,7 +91,7 @@ class Composer:
             logging.debug("index of min is {}".format(min_ind))
         parent = population[max_ind[0][0]]
 
-        if mutate > random.randint(0, 100):
+        if random.randint(0, 100) < mutate:
             parent = parent[:3] + parent[:-1]
 
         return parent
@@ -119,9 +123,12 @@ class Composer:
                 self.composition.append(word)
 
     def compose(self):
-        """ the main composition function of the piece, cueing the different elements and appending
-        them to a list of musical elements, which is returned to the play function """
-        segment = self.sampler.get_ogg_sample('./I will give my love an apple.ogg')
+        """ the main composition function of the piece,
+        cueing the different elements and appending
+        them to a list of musical elements, which is
+        returned to the play function """
+        segment = self.sampler.get_ogg_sample(
+            r'./I will give my love an apple.ogg')
         # exposition
         self.composition.append(segment[2000:25000])
         words = self.sampler.split_sample(segment)
@@ -148,11 +155,14 @@ class Composer:
             for sperm in parent:
                 for s in sperm:
                     self.composition.append(s)
-                    parent = self.evolve((parent + population[1:])[:8], target)
+                    new_population = parent + population[1:]
+                    parent = self.evolve(new_population[:8], target)
             if DEBUG:
-                logging.debug("absolute different {}".format(np.abs(target - skew)))
+                logging.debug(
+                    "absolute different {}".format(np.abs(target - skew)))
         # recap
-        self.composition.append(segment[2000:25000].fade_in(500).fade_out(1000))
+        self.composition.append(
+            segment[2000:25000].fade_in(500).fade_out(1000))
 
     def play(self):
         for segment in self.composition:
