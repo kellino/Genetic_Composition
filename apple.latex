@@ -1,0 +1,34 @@
+\documentclass[14pf, a4paper]{article}
+\usepackage[english]{babel}
+\usepackage{palatino}
+\usepackage[utf8]{inputenc}
+\usepackage[hidelinks]{hyperref}
+
+\title{The Apple Never Falls Far From The Tree}
+\author{David Kelly}
+\date{April 2016}
+
+\begin{document}
+
+\maketitle
+
+The apple is a fascinating plant. There are presently over 7,500 \textit{cultivars} of apple
+known\footnote{\url{https://en.wikipedia.org/wiki/Apple}}. The genome is  incredibly complex, with
+approximately 57,000 genes, almost double that of humans. If one were to plant a apple from a Granny
+Smith tree, the resulting tree and fruit would be unique. All Granny Smith's are grown from cuttings
+from the original tree. This composition tries to reflect some of these characteristics.
+
+The English folk song \textbf{I will give my love an apple}\footnote{\url{http://www.thecanadianencyclopedia.ca/en/article/ill-give-my-love-an-apple-emc/}}, 
+dating from 15th century\footnote{here in a performance by Andreas Scholl} is used as the basis of a piece of music concréte which
+progressively transforms the source material through a series of mutations, much in the manner that
+the apple genome itself morphs from generation to generation\footnote{Lines from Hardy's poem
+    'Heredity' come to mind: I am the family face;/ Flesh perishes, I live on,/ Projecting trait
+    and trace/ Through time to times anon, And leaping from place to place/
+Over oblivion.}. Some generations are similar to
+their parents, some are far removed.
+
+The composition loosely follows sonata form. There is an initial exposition of the material - an
+extract from the source recording - which is then sliced into sections. Imagine these sections to be
+representitive of genetic strands, mobile and malleable.
+
+\end{document}
