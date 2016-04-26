@@ -27,8 +27,12 @@ the apple genome itself morphs from generation to generation\footnote{Lines from
 Over oblivion.}. Some generations are similar to
 their parents, some are far removed.
 
-The composition loosely follows sonata form. There is an initial exposition of the material - an
-extract from the source recording - which is then sliced into sections. Imagine these sections to be
-representitive of genetic strands, mobile and malleable.
+The composition loosely follows sonata form. There is an initial introdution and exposition of the
+material (an
+extract from the source recording) which is then sliced into sections. Imagine these sections to be
+representitive of genetic strands, mobile and malleable. Next, there is a
+\textit{psuedo}-developement, an attempt to mimic the transition in sonata-form. This uses initially
+a purely random duplication of some elements, followed by a process controlled by a first-order
+Markov chain\footnote{\url{https://en.wikipedia.org/wiki/Markov_chain#Music}}
 
 \end{document}
