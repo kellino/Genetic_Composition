@@ -2,9 +2,9 @@ Simple algorithmic composition for Computer Music UCl
 ===========
 
 Requirements:
-    Python3.5
-    numpy
-    pydub (available on pip)
+    * Python3.5
+    * numpy
+    * pydub (available on pip)
 
 While the program is written in python3.5, it should be relatively easy to convert to python2.7
 
